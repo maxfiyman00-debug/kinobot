@@ -6,7 +6,7 @@ from database import db
 from keyboards import user_main_kb, subscribe_kb
 from config import MAIN_ADMIN_ID
 
-user_router = Router()
+router = Router()
 
 
 async def check_subscription(bot: Bot, user_id: int):
@@ -34,7 +34,7 @@ async def check_subscription(bot: Bot, user_id: int):
     return unsubscribed
 
 
-@user_router.message(CommandStart())
+@router.message(CommandStart())
 async def start_cmd(message: Message, command: CommandObject, bot: Bot):
     await db.add_user(message.from_user.id, message.from_user.full_name)
 
@@ -65,7 +65,7 @@ async def start_cmd(message: Message, command: CommandObject, bot: Bot):
         )
 
 
-@user_router.callback_query(F.data == "check_sub")
+@router.callback_query(F.data == "check_sub")
 async def check_sub_callback(call: CallbackQuery, bot: Bot):
     unsubscribed = await check_subscription(bot, call.from_user.id)
     if unsubscribed:
@@ -75,12 +75,12 @@ async def check_sub_callback(call: CallbackQuery, bot: Bot):
         await call.message.answer("✅ Obuna tasdiqlandi! Kino kodini yuborishingiz mumkin.", reply_markup=user_main_kb())
 
 
-@user_router.message(F.text == "🔍 Kino qidirish")
+@router.message(F.text == "🔍 Kino qidirish")
 async def search_btn(message: Message):
     await message.answer("Kino kodini yuboring:")
 
 
-@user_router.message(F.text)
+@router.message(F.text)
 async def search_movie(message: Message, bot: Bot):
     if message.text.startswith('/'):
         return
