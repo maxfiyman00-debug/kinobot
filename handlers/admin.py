@@ -100,7 +100,113 @@ async def upload_movie_desc(message: Message, state: FSMContext, bot: Bot):
     else:
         await message.answer("✅ Kino muvaffaqiyatli saqlandi!", reply_markup=sub_admin_kb())
     await state.clear()
+from aiogram import Router, F, types
+from aiogram.types import Message
+from database import db
+from config import MAIN_ADMIN_ID
 
+admin_router = Router()
+
+# Foydalanuvchi holati (state)
+user_states = {}
+
+@admin_router.message(F.text == "⚙️ Sozlamalar")
+async def settings_menu(message: Message):
+    """Admin sozlamalari"""
+    if message.from_user.id != MAIN_ADMIN_ID:
+        await message.answer("❌ Faqat admin!")
+        return
+    
+    keyboard = types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="➕ Funksiya qo'shish")],
+            [types.KeyboardButton(text="📋 Funksiyalar ro'yxati")],
+            [types.KeyboardButton(text="❌ Funksiya o'chirish")],
+            [types.KeyboardButton(text="🔙 Orqaga")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("⚙️ **Sozlamalar Paneli**", reply_markup=keyboard)
+
+@admin_router.message(F.text == "➕ Funksiya qo'shish")
+async def add_function_name(message: Message):
+    """Funksiya nomini so'rash"""
+    if message.from_user.id != MAIN_ADMIN_ID:
+        return
+    
+    user_states[message.from_user.id] = "waiting_func_name"
+    await message.answer("📝 Funksiya nomini kiriting (masalan: custom_broadcast):")
+
+@admin_router.message(F.text == "📋 Funksiyalar ro'yxati")
+async def list_functions(message: Message):
+    """Custom funksiyalarni ko'rsatish"""
+    if message.from_user.id != MAIN_ADMIN_ID:
+        return
+    
+    functions = await db.get_all_custom_functions()
+    
+    if not functions:
+        await message.answer("❌ Hozircha custom funksiyalar yo'q")
+        return
+    
+    text = "📋 **Custom Funksiyalar:**\n\n"
+    for func in functions:
+        text += f"• **{func['name']}**\n"
+    
+    await message.answer(text)
+
+@admin_router.message(F.text == "❌ Funksiya o'chirish")
+async def delete_function(message: Message):
+    """Funksiyani o'chirish"""
+    if message.from_user.id != MAIN_ADMIN_ID:
+        return
+    
+    user_states[message.from_user.id] = "waiting_delete_func"
+    await message.answer("❌ O'chirish uchun funksiya nomini kiriting:")
+
+# Text handler - holatga qarab javob
+@admin_router.message(F.text)
+async def handle_text(message: Message):
+    """Matn based holat handler"""
+    user_id = message.from_user.id
+    state = user_states.get(user_id)
+    
+    if state == "waiting_func_name":
+        func_name = message.text.strip()
+        user_states[user_id] = f"waiting_func_code:{func_name}"
+        await message.answer(
+            f"📄 **{func_name}** uchun funksiya kodini yuboring:\n\n"
+            "Python kodini yuboring (async funksiya bo'lishi shart):\n\n"
+            "Masalan:\n```python\nasync def {func_name}(bot, message):\n    await message.answer('Salom!')\n```"
+        )
+    
+    elif state and state.startswith("waiting_func_code:"):
+        func_name = state.split(":", 1)[1]
+        func_code = message.text
+        
+        # Kod saqla
+        success = await db.add_custom_function(func_name, func_code)
+        
+        if success:
+            await message.answer(f"✅ **{func_name}** funksiya qo'shildi!")
+        else:
+            await message.answer("❌ Xato! Bu nomda funksiya allaqachon bor.")
+        
+        user_states.pop(user_id, None)
+    
+    elif state == "waiting_delete_func":
+        func_name = message.text.strip()
+        await db.delete_custom_function(func_name)
+        await message.answer(f"✅ **{func_name}** o'chirildi!")
+        user_states.pop(user_id, None)
+
+@admin_router.message(F.text == "🔙 Orqaga")
+async def back_button(message: Message):
+    """Orqaga tugmasi"""
+    if message.from_user.id == MAIN_ADMIN_ID:
+        from keyboards import admin_keyboard
+        await message.answer("🏠 Asosiy menu", reply_markup=admin_keyboard)
+    user_states.pop(message.from_user.id, None)
 # === SOZLAMALAR (Faqat Asosiy Admin uchun) ===
 @router.message(F.text == "⚙️ Sozlamalar")
 async def settings_menu(message: Message):
