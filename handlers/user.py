@@ -60,7 +60,7 @@ async def start_cmd(message: Message, command: CommandObject, bot: Bot):
             await message.answer("❌ Bunday kodli kino topilmadi.")
     else:
         await message.answer(
-            "Xush kelibsiz! Kinolarni qidirish uchun kodni yuboring yoki quyidagi tugmadan foydalaning.",
+            "Xush kelibsiz! Kinolarni qidirish uchun kodni yuboring yoki quyidagi tugmadan foydalaning.q",
             reply_markup=user_main_kb()
         )
 
