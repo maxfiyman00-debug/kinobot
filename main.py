@@ -28,6 +28,38 @@ async def main():
 
     print("Bot ishga tushdi!")
     await dp.start_polling(bot)
+import asyncio
+from database import db
+
+async def execute_custom_function(func_name: str, bot, message):
+    """Custom funksiyani dinamik ishga tushirish"""
+    func_code = await db.get_custom_function(func_name)
+    
+    if not func_code:
+        await message.answer("❌ Funksiya topilmadi!")
+        return
+    
+    try:
+        # Xavfsiz namespace yaratish
+        namespace = {
+            'bot': bot,
+            'message': message,
+            'asyncio': asyncio,
+        }
+        
+        # Kodni compile va execute qilish
+        exec(func_code, namespace)
+        
+        # Async funksiyani ishga tushirish
+        func = namespace.get(func_name)
+        if func and asyncio.iscoroutinefunction(func):
+            await func(bot, message)
+        else:
+            await message.answer("❌ Funksiya topilmadi yoki async emas!")
+    
+    except Exception as e:
+        await message.answer(f"❌ Xato: {str(e)}")
+        print(f"Error executing {func_name}: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
