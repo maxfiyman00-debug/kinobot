@@ -132,5 +132,41 @@ class Database:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch('SELECT user_id FROM admins')
             return [row['user_id'] for row in rows]
+# Custom funksiyalar
+async def add_custom_function(self, name: str, code: str):
+    """Yangi custom funksiya qo'shish"""
+    if not self.pool: return False
+    try:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                'INSERT INTO custom_functions (name, code) VALUES ($1, $2)',
+                name, code
+            )
+        return True
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
 
+async def get_custom_function(self, name: str):
+    """Custom funksiyani olish"""
+    if not self.pool: return None
+    async with self.pool.acquire() as conn:
+        return await conn.fetchval(
+            'SELECT code FROM custom_functions WHERE name = $1 AND is_active = TRUE',
+            name
+        )
+
+async def get_all_custom_functions(self):
+    """Barcha custom funksiyalarni olish"""
+    if not self.pool: return []
+    async with self.pool.acquire() as conn:
+        rows = await conn.fetch('SELECT name, code FROM custom_functions WHERE is_active = TRUE')
+        return rows
+
+async def delete_custom_function(self, name: str):
+    """Custom funksiyani o'chirish"""
+    if not self.pool: return False
+    async with self.pool.acquire() as conn:
+        await conn.execute('DELETE FROM custom_functions WHERE name = $1', name)
+    return True
 db = Database()
